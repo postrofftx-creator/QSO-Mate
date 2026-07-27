@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>QSO Mate — GMRS/HAM Contact Log</title>
+<style>
+  :root{
+    --bg:#141712;
+    --panel:#1c2017;
+    --panel2:#242a1c;
+    --line:#3a3f2f;
+    --amber:#ffb020;
+    --amber-dim:#7a5a20;
+    --green:#6fdc8c;
+    --red:#e2564f;
+    --text:#eae7d8;
+    --muted:#8b9077;
+    --mono:ui-monospace,'SF Mono','Consolas','Menlo',monospace;
+    --disp:'Arial Narrow',Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--mono);}
+  body{padding-bottom:40px;}
+  ::selection{background:var(--amber-dim);color:#fff;}
+  input,select,textarea,button{font-family:var(--mono);}
+  a{color:var(--amber);}
+
+  .nameplate{
+    position:sticky;top:0;z-index:50;
+    background:linear-gradient(180deg,#1a1e15,#141712);
+    border-bottom:2px solid var(--line);
+    padding:14px 16px 10px;
+  }
+  .nameplate h1{
+    font-family:var(--disp);font-weight:700;letter-spacing:2px;
+    font-size:22px;margin:0;color:var(--text);
+    text-transform:uppercase;
+  }
+  .nameplate h1 .dot{color:var(--amber);}
+  .nameplate .tagline{
+    font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:2px;
+  }
+  .tabbar{display:flex;gap:6px;margin-top:12px;}
+  .tab{
+    flex:1;text-align:center;padding:8px 4px;font-family:var(--disp);font-weight:600;
+    font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);
+    background:var(--panel);border:1px solid var(--line);border-radius:3px;cursor:pointer;
+  }
+  .tab.active{color:#14170f;background:var(--amber);border-color:var(--amber);}
+
+  .wrap{max-width:640px;margin:0 auto;padding:14px 16px;}
+  .panel{
+    background:var(--panel);border:1px solid var(--line);border-radius:6px;
+    padding:14px;margin-bottom:14px;
+  }
+  .panel-title{
+    font-family:var(--disp);font-weight:600;letter-spacing:1.5px;text-transform:uppercase;
+    font-size:13px;color:var(--amber);margin:0 0 10px;display:flex;align-items:center;justify-content:space-between;
+  }
+  .field{margin-bottom:10px;}
+  .field label{
+    display:block;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:4px;
+  }
+  .field input,.field select,.field textarea{
+    width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:4px;
+    color:var(--text);padding:9px 10px;font-size:14px;
+  }
+  .field input:focus,.field select:focus,.field textarea:focus{outline:1px solid var(--amber);border-color:var(--amber);}
+  .field textarea{resize:vertical;min-height:50px;}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+
+  .segbtns{display:flex;gap:8px;}
+  .segbtn{
+    flex:1;padding:9px 6px;text-align:center;border:1px solid var(--line);border-radius:4px;
+    background:var(--panel2);color:var(--muted);font-size:12px;letter-spacing:1px;text-transform:uppercase;
+    cursor:pointer;font-weight:600;
+  }
+  .segbtn.on{background:var(--amber-dim);color:var(--amber);border-color:var(--amber);}
+
+  .btn{
+    display:inline-block;background:var(--amber);color:#14170f;border:none;border-radius:4px;
+    padding:11px 18px;font-family:var(--disp);font-weight:700;letter-spacing:1px;text-transform:uppercase;
+    font-size:13px;cursor:pointer;width:100%;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--muted);}
+  .btn.danger{background:transparent;border:1px solid var(--red);color:var(--red);}
+  .btn.small{width:auto;padding:6px 10px;font-size:11px;}
+
+  .smeter{display:flex;align-items:center;gap:2px;height:14px;}
+  .smeter .seg{flex:1;height:100%;background:var(--line);border-radius:1px;}
+  .smeter .seg.lit{background:var(--amber);}
+  .smeter .seg.lit.hot{background:var(--red);}
+
+  .badge{
+    display:inline-block;padding:2px 7px;border-radius:3px;font-size:10px;font-weight:700;
+    letter-spacing:1px;text-transform:uppercase;
+  }
+  .badge.gmrs{background:#2a3550;color:#8fb4ff;}
+  .badge.ham{background:#2f3d24;color:var(--green);}
+  .badge.dmr{background:#3a2a55;color:#c9a0ff;}
+
+  .entry{
+    border:1px solid var(--line);border-radius:5px;padding:10px 12px;margin-bottom:8px;background:var(--panel2);
+  }
+  .entry-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .entry-call{font-family:var(--disp);font-weight:700;font-size:16px;letter-spacing:1px;color:var(--text);}
+  .entry-meta{font-size:11px;color:var(--muted);margin-top:3px;}
+  .entry-meta span{margin-right:10px;}
+  .entry-notes{font-size:12px;color:var(--muted);margin-top:6px;font-style:italic;}
+  .entry-actions{display:flex;gap:6px;margin-top:8px;}
+
+  .empty{color:var(--muted);font-size:12px;text-align:center;padding:20px 0;}
+  .search{margin-bottom:10px;}
+  .hint{font-size:10.5px;color:var(--muted);margin-top:4px;line-height:1.4;}
+  #map{border-radius:6px;border:1px solid var(--line);background:var(--panel2);padding:10px;}
+  .radar-ring{fill:none;stroke:var(--line);stroke-width:1;}
+  .radar-axis{stroke:var(--line);stroke-width:1;}
+  .radar-label{fill:var(--muted);font-size:8px;font-family:var(--mono);}
+  .radar-dot{cursor:pointer;stroke:#14170f;stroke-width:1.5;}
+  .radar-dot.ham{fill:var(--green);}
+  .radar-dot.gmrs{fill:#8fb4ff;}
+  .radar-dot.dmr{fill:#c9a0ff;}
+  .chipbtn{
+    padding:7px 14px;text-align:center;border:1px solid var(--line);border-radius:20px;
+    background:var(--panel2);color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;
+    cursor:pointer;font-weight:600;display:inline-block;
+  }
+  .chipbtn.on.ham{background:#2f3d24;color:var(--green);border-color:var(--green);}
+  .chipbtn.on.gmrs{background:#2a3550;color:#8fb4ff;border-color:#8fb4ff;}
+  .chipbtn.on.dmr{background:#3a2a55;color:#c9a0ff;border-color:#c9a0ff;}
+  .radar-home{fill:var(--amber);stroke:#14170f;stroke-width:2;}
+  .radar-call{font-size:7.5px;fill:var(--text);font-family:var(--mono);}
+  .contact-detail{border-top:1px solid var(--line);margin-top:10px;padding-top:10px;font-size:12px;}
+
+  .stat-row{display:flex;gap:10px;margin-bottom:10px;}
+  .stat{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:8px 10px;text-align:center;}
+  .stat .num{font-family:var(--disp);font-size:20px;color:var(--amber);font-weight:700;}
+  .stat .lbl{font-size:9.5px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
+
+  .toast{
+    position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+    background:var(--amber);color:#14170f;padding:9px 16px;border-radius:5px;font-size:12px;font-weight:700;
+    letter-spacing:0.5px;z-index:100;opacity:0;transition:opacity 0.25s;pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+  .adv-toggle{font-size:11px;color:var(--amber);cursor:pointer;margin:6px 0;letter-spacing:0.5px;text-transform:uppercase;}
+  .adv-box{display:none;border-top:1px dashed var(--line);margin-top:8px;padding-top:8px;}
+  .adv-box.open{display:block;}
+  .grid-chip{font-family:var(--disp);font-weight:700;color:var(--green);letter-spacing:1px;}
+</style>
+</head>
+<body>
+
+<div class="nameplate">
+  <h1>QSO<span class="dot">·</span>MATE</h1>
+  <div class="tagline">GMRS &amp; Amateur Radio Contact Log</div>
+  <div class="tabbar">
+    <div class="tab active" data-tab="log">Log</div>
+    <div class="tab" data-tab="roster">Roster</div>
+    <div class="tab" data-tab="map">Map</div>
+    <div class="tab" data-tab="profile">Profile</div>
+  </div>
+</div>
+
+<div class="wrap" id="app"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- STORAGE HELPERS (auto-detect backend) ----------
+const APP_BUILD = '2026-07-22-dmr1'; // bump this string whenever a new zip is built, to make it obvious in-app which version actually installed
+const LS_PREFIX = 'qsolog:';
+function hasClaudeStorage(){
+  return typeof window.storage !== 'undefined' && window.storage && typeof window.storage.get === 'function';
+}
+function hasLocalStorage(){
+  try{
+    const t='__qsolog_probe__';
+    localStorage.setItem(t,'1'); localStorage.removeItem(t);
+    return true;
+  }catch(e){ return false; }
+}
+async function storeGet(key){
+  try{
+    if(hasClaudeStorage()){
+      const r = await window.storage.get(key,false);
+      return r ? JSON.parse(r.value) : null;
+    }
+    const raw = localStorage.getItem(LS_PREFIX+key);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+async function storeSet(key,val){
+  try{
+    if(hasClaudeStorage()){
+      const r = await window.storage.set(key, JSON.stringify(val), false);
+      return !!r;
+    }
+    localStorage.setItem(LS_PREFIX+key, JSON.stringify(val));
+    return true;
+  }catch(e){ console.error('storage set failed',key,e); return false; }
+}
+
+// ---------- STORAGE HEALTH CHECK ----------
+async function checkStorageHealth(){
+  try{
+    const backend = hasClaudeStorage() ? 'claude' : (hasLocalStorage() ? 'local' : 'none');
+    if(backend==='none') return { ok:false, backend };
+    const probe = 'ok-'+Date.now();
+    const setOk = await storeSet('__healthcheck', probe);
+    if(!setOk) return { ok:false, backend };
+    const got = await storeGet('__healthcheck');
+    return { ok: got===probe, backend };
+  }catch(e){ return { ok:false, backend:'none' }; }
+}
+
+// ---------- STATE ----------
+let STATE = {
+  profile: { callsign:'', gmrsId:'', hamLicense:'', homeLocation:'', homeLat:null, homeLng:null, gridSquare:'' },
+  stations: [], // {id, hamCallsign, gmrsId, name, notes}
+  events: [],   // {id, stationId, timestamp, service, freq, mode, tone, sig, location, lat, lng, notes}
+  geocache: {}, // locationString(lower) -> {lat,lng}
+  activeTab: 'log',
+  advOpen: false,
+  mapPref: 'geo',
+  mapServiceFilter: {HAM:true, DMR:true, GMRS:true},
+  storageOK: null, // null=unknown, true/false after health check
+  storageBackend: null // 'claude' | 'local' | 'none'
+};
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1600);
+}
+
+// ---------- GEO MATH ----------
+function toRad(d){return d*Math.PI/180;}
+function toDeg(r){return r*180/Math.PI;}
+function haversineMiles(lat1,lon1,lat2,lon2){
+  const R=3958.8;
+  const dLat=toRad(lat2-lat1), dLon=toRad(lon2-lon1);
+  const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function bearingCompass(lat1,lon1,lat2,lon2){
+  const y=Math.sin(toRad(lon2-lon1))*Math.cos(toRad(lat2));
+  const x=Math.cos(toRad(lat1))*Math.sin(toRad(lat2))-Math.sin(toRad(lat1))*Math.cos(toRad(lat2))*Math.cos(toRad(lon2-lon1));
+  let brng=(toDeg(Math.atan2(y,x))+360)%360;
+  const dirs=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  const ix=Math.round(brng/22.5)%16;
+  return {deg:Math.round(brng), dir:dirs[ix]};
+}
+function toGridSquare(lat, lon){
+  lat=lat+90; lon=lon+180;
+  const A=Math.floor(lon/20), B=Math.floor(lat/10);
+  lon-=A*20; lat-=B*10;
+  const C=Math.floor(lon/2), D=Math.floor(lat/1);
+  lon-=C*2; lat-=D*1;
+  const E=Math.floor(lon*12), F=Math.floor(lat*24);
+  return String.fromCharCode(65+A)+String.fromCharCode(65+B)+C+D+String.fromCharCode(97+E)+String.fromCharCode(97+F);
+}
+
+// ---------- GEOCODING ----------
+// Uses Photon (komoot's open geocoder) rather than Nominatim: Nominatim's usage
+// policy explicitly disallows this kind of app-embedded querying and will
+// silently reject requests (which is why some logged contacts came back
+// "unmapped" — not a bug, just Nominatim blocking the request).
+let _geocodeQueue = Promise.resolve();
+function geocode(locationStr){
+  if(!locationStr) return Promise.resolve(null);
+  const key = locationStr.trim().toLowerCase();
+  if(STATE.geocache[key]) return Promise.resolve(STATE.geocache[key]);
+  // chain requests serially with a small gap so we're never bursting several at once
+  const run = _geocodeQueue.then(async ()=>{
+    try{
+      const url = 'https://photon.komoot.io/api/?limit=1&q='+encodeURIComponent(locationStr);
+      const res = await fetch(url,{headers:{'Accept':'application/json'}});
+      const data = await res.json();
+      const feat = data && data.features && data.features[0];
+      if(feat && feat.geometry && feat.geometry.coordinates){
+        const [lng,lat] = feat.geometry.coordinates;
+        const pt = {lat, lng};
+        STATE.geocache[key]=pt;
+        await storeSet('geocache', STATE.geocache);
+        return pt;
+      }
+    }catch(e){ console.error('geocode failed',e); }
+    return null;
+  });
+  _geocodeQueue = run.then(()=>new Promise(r=>setTimeout(r,350)), ()=>new Promise(r=>setTimeout(r,350)));
+  return run;
+}
+
+// ---------- SIGNAL SCALE ----------
+const SIG_LEVELS = ['S1','S2','S3','S4','S5','S6','S7','S8','S9','S9+10','S9+20','S9+40'];
+function sigIndex(s){ const i=SIG_LEVELS.indexOf(s); return i<0?0:i; }
+function renderSMeter(sig){
+  const idx = sigIndex(sig);
+  let html = '<div class="smeter">';
+  for(let i=0;i<SIG_LEVELS.length;i++){
+    const lit = i<=idx;
+    const hot = i>=8; // S9 and above
+    html += `<div class="seg ${lit?'lit':''} ${lit&&hot?'hot':''}"></div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+function timeAgo(ts){
+  const diff = Date.now()-ts;
+  const min = Math.floor(diff/60000);
+  if(min<1) return 'just now';
+  if(min<60) return min+'m ago';
+  const hr = Math.floor(min/60);
+  if(hr<24) return hr+'h ago';
+  const d = Math.floor(hr/24);
+  if(d<30) return d+'d ago';
+  return new Date(ts).toLocaleDateString();
+}
+function fmtDT(ts){
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined,{month:'short',day:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'});
+}
+
+// ---------- STATION / EVENT LOGIC ----------
+function findStationByAnyId(hamCs, gmrsId, dmrId){
+  const h = (hamCs||'').trim().toUpperCase();
+  const g = (gmrsId||'').trim().toUpperCase();
+  const d = (dmrId||'').trim().toUpperCase();
+  if(!h && !g && !d) return null;
+  return STATE.stations.find(s=>{
+    const sh = (s.hamCallsign||'').toUpperCase();
+    const sg = (s.gmrsId||'').toUpperCase();
+    const sd = (s.dmrId||'').toUpperCase();
+    return (h && sh===h) || (g && sg===g) || (d && sd===d);
+  });
+}
+function stationLabel(st){
+  const parts = [];
+  if(st.hamCallsign) parts.push(st.hamCallsign);
+  if(st.gmrsId) parts.push(st.gmrsId);
+  if(st.dmrId) parts.push(st.dmrId);
+  return parts.join(' / ') || '?';
+}
+function stationBadges(st){
+  let html='';
+  if(st.hamCallsign) html += '<span class="badge ham">HAM</span>';
+  if(st.dmrId) html += ' <span class="badge dmr">DMR</span>';
+  if(st.gmrsId) html += ' <span class="badge gmrs">GMRS</span>';
+  return html;
+}
+// Which services a station holds, and which single class to use when a marker/dot needs one color.
+function stationServices(st){
+  const svcs = [];
+  if(st.hamCallsign) svcs.push('HAM');
+  if(st.dmrId) svcs.push('DMR');
+  if(st.gmrsId) svcs.push('GMRS');
+  return svcs;
+}
+function stationPrimaryClass(st){
+  if(st.hamCallsign) return 'ham';
+  if(st.dmrId) return 'dmr';
+  if(st.gmrsId) return 'gmrs';
+  return 'ham';
+}
+function stationPassesFilter(st, filter){
+  const svcs = stationServices(st);
+  if(svcs.length===0) return true;
+  return svcs.some(s=>filter[s]);
+}
+function lastEventForStation(stationId){
+  const evs = STATE.events.filter(e=>e.stationId===stationId).sort((a,b)=>b.timestamp-a.timestamp);
+  return evs[0]||null;
+}
+function eventsForStation(stationId){
+  return STATE.events.filter(e=>e.stationId===stationId).sort((a,b)=>b.timestamp-a.timestamp);
+}
+
+async function saveContactEvent(form){
+  const hamCs = (form.hamCallsign||'').trim();
+  const gmrsId = (form.gmrsId||'').trim();
+  const dmrId = (form.dmrId||'').trim();
+  if(!hamCs && !gmrsId && !dmrId){ showToast('Enter a Ham callsign, GMRS ID, or DMR ID'); return false; }
+  let station = findStationByAnyId(hamCs, gmrsId, dmrId);
+  if(!station){
+    station = { id:uid(), hamCallsign: hamCs.toUpperCase(), gmrsId: gmrsId.toUpperCase(), dmrId: dmrId.toUpperCase(), name: form.name||'', notes: form.stationNotes||'' };
+    STATE.stations.push(station);
+  } else {
+    if(hamCs) station.hamCallsign = hamCs.toUpperCase();
+    if(gmrsId) station.gmrsId = gmrsId.toUpperCase();
+    if(dmrId) station.dmrId = dmrId.toUpperCase();
+    if(form.name) station.name = form.name;
+    if(form.stationNotes) station.notes = form.stationNotes;
+  }
+  let lat=null,lng=null;
+  if(form.lat && form.lng){ lat=parseFloat(form.lat); lng=parseFloat(form.lng); }
+  else if(form.location){ const g = await geocode(form.location); if(g){lat=g.lat;lng=g.lng;} }
+
+  const ev = {
+    id: uid(), stationId: station.id, timestamp: form.timestamp||Date.now(),
+    service: form.service, freq: form.freq||'', mode: form.mode||(form.service==='HAM'?'':form.service),
+    tone: form.tone||'', sig: form.sig||'S5', location: form.location||'', lat, lng, notes: form.notes||''
+  };
+  STATE.events.push(ev);
+  await storeSet('stations', STATE.stations);
+  await storeSet('events', STATE.events);
+  showToast('Contact logged: '+stationLabel(station));
+  return true;
+}
+
+async function deleteEvent(id){
+  STATE.events = STATE.events.filter(e=>e.id!==id);
+  await storeSet('events', STATE.events);
+  render();
+}
+async function deleteStation(id){
+  STATE.stations = STATE.stations.filter(s=>s.id!==id);
+  STATE.events = STATE.events.filter(e=>e.stationId!==id);
+  await storeSet('stations', STATE.stations);
+  await storeSet('events', STATE.events);
+  render();
+}
+async function updateStation(id, updates){
+  const st = STATE.stations.find(s=>s.id===id);
+  if(!st) return false;
+  st.hamCallsign = (updates.hamCallsign||'').trim().toUpperCase();
+  st.gmrsId = (updates.gmrsId||'').trim().toUpperCase();
+  st.dmrId = (updates.dmrId||'').trim().toUpperCase();
+  st.name = updates.name||'';
+  st.notes = updates.notes||'';
+  await storeSet('stations', STATE.stations);
+  return true;
+}
+function renderEditForm(s){
+  return `<div class="contact-detail">
+    <div class="row3">
+      <div class="field"><label>Ham Callsign</label><input id="edit-hamcall-${s.id}" value="${escapeAttr(s.hamCallsign||'')}" placeholder="KD5XYZ"></div>
+      <div class="field"><label>DMR ID</label><input id="edit-dmrid-${s.id}" value="${escapeAttr(s.dmrId||'')}" placeholder="3123456"></div>
+      <div class="field"><label>GMRS ID</label><input id="edit-gmrsid-${s.id}" value="${escapeAttr(s.gmrsId||'')}" placeholder="WRAA123"></div>
+    </div>
+    <div class="field"><label>Name</label><input id="edit-name-${s.id}" value="${escapeAttr(s.name||'')}" placeholder="First name"></div>
+    <div class="field"><label>Notes</label><textarea id="edit-notes-${s.id}" placeholder="Notes about this station">${escapeHtml(s.notes||'')}</textarea></div>
+    <div class="entry-actions">
+      <button class="btn small" data-save-edit="${s.id}" style="width:auto">Save</button>
+      <button class="btn ghost small" data-cancel-edit="${s.id}">Cancel</button>
+    </div>
+  </div>`;
+}
+
+// ---------- RENDER: LOG TAB ----------
+function renderLogTab(){
+  const recent = [...STATE.events].sort((a,b)=>b.timestamp-a.timestamp).slice(0,8);
+  let warnBanner = '';
+  if(STATE.storageBackend==='none'){
+    warnBanner = `
+  <div class="panel" style="border-color:var(--red)">
+    <div class="panel-title" style="color:var(--red)">⚠ Not Saving</div>
+    <div class="hint">Nothing is persisting right now — anything you log will disappear if you close or reload. This can happen in private/incognito browsing. Use Export on the Profile tab often as a backup.</div>
+  </div>`;
+  } else if(STATE.storageBackend==='local'){
+    warnBanner = `
+  <div class="panel" style="border-color:var(--amber-dim)">
+    <div class="panel-title">Saving On This Device</div>
+    <div class="hint">Your log is saved locally on this install of the app. It'll be here next time you open it — but it won't follow you to a different device, or to a fresh reinstall. Export from the Profile tab now and then as a backup.</div>
+  </div>`;
+  }
+  return `
+  ${warnBanner}
+  <div class="panel">
+    <div class="panel-title">New Contact</div>
+    <form id="logForm">
+      <div class="row3">
+        <div class="field"><label>Ham Callsign</label><input name="hamCallsign" id="f-hamcall" placeholder="KD5XYZ" autocomplete="off"></div>
+        <div class="field"><label>DMR ID</label><input name="dmrId" id="f-dmrid" placeholder="3123456" autocomplete="off"></div>
+        <div class="field"><label>GMRS ID</label><input name="gmrsId" id="f-gmrsid" placeholder="WRAA123" autocomplete="off"></div>
+      </div>
+      <div class="field"><label>Name</label><input name="name" id="f-name" placeholder="First name"></div>
+      <div class="hint" style="margin:-4px 0 10px">Fill in whichever apply — some contacts hold more than one. This QSO's service (below) picks which frequency fields show.</div>
+      <div class="field">
+        <label>Service (this contact)</label>
+        <div class="segbtns" id="serviceSeg">
+          <div class="segbtn on" data-val="HAM">Ham</div>
+          <div class="segbtn" data-val="DMR">DMR</div>
+          <div class="segbtn" data-val="GMRS">GMRS</div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="freqLabel">Frequency / Repeater</label><input name="freq" id="f-freq" placeholder="146.520 or 462.675"></div>
+        <div class="field" id="modeField"><label>Mode</label>
+          <select name="mode" id="f-mode">
+            <option>FM</option><option>SSB</option><option>CW</option>
+            <option>D-STAR</option><option>System Fusion</option><option>FT8</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label id="toneLabel">Tone / Offset</label><input name="tone" id="f-tone" placeholder="100.0 Hz / +600"></div>
+        <div class="field"><label>Location (city/town)</label><input name="location" id="f-location" placeholder="Springfield, IL"></div>
+      </div>
+      <div class="field">
+        <label>Signal Strength (RX)</label>
+        <select name="sig" id="f-sig">
+          ${SIG_LEVELS.map(s=>`<option value="${s}" ${s==='S5'?'selected':''}>${s}</option>`).join('')}
+        </select>
+        <div style="margin-top:6px" id="sigPreview">${renderSMeter('S5')}</div>
+      </div>
+      <div class="adv-toggle" id="advToggle">+ Advanced (exact coordinates, timestamp, notes)</div>
+      <div class="adv-box ${STATE.advOpen?'open':''}" id="advBox">
+        <div class="row2">
+          <div class="field"><label>Lat (override, optional)</label><input name="lat" id="f-lat" placeholder="39.7817"></div>
+          <div class="field"><label>Lng (override, optional)</label><input name="lng" id="f-lng" placeholder="-89.6501"></div>
+        </div>
+        <div class="hint">Leave blank to auto-locate from the city/town name. Use exact coordinates (e.g. pulled from APRS.fi) for pinpoint placement.</div>
+        <div class="field" style="margin-top:8px"><label>Date / Time</label><input name="dt" id="f-dt" type="datetime-local"></div>
+        <div class="field"><label>Notes</label><textarea name="notes" id="f-notes" placeholder="Signal report, rig, antenna, etc."></textarea></div>
+      </div>
+      <button type="submit" class="btn" style="margin-top:6px">Log Contact</button>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Recent Activity</div>
+    ${recent.length? recent.map(ev=>{
+      const st = STATE.stations.find(s=>s.id===ev.stationId);
+      return `<div class="entry">
+        <div class="entry-top">
+          <span class="entry-call">${st?stationLabel(st):'?'}</span>
+          <span class="badge ${(ev.service||'').toLowerCase()}">${ev.service} QSO</span>
+        </div>
+        <div class="entry-meta">
+          <span>${st&&st.name?st.name:''}</span>
+          <span>${ev.freq||''}${ev.mode?' · '+ev.mode:''}</span>
+          <span>${ev.location||''}</span>
+        </div>
+        <div style="margin-top:6px">${renderSMeter(ev.sig)}</div>
+        <div class="entry-meta" style="margin-top:4px">${fmtDT(ev.timestamp)} · ${timeAgo(ev.timestamp)}</div>
+        ${ev.notes?`<div class="entry-notes">${escapeHtml(ev.notes)}</div>`:''}
+        <div class="entry-actions"><button class="btn danger small" data-del-event="${ev.id}">Delete</button></div>
+      </div>`;
+    }).join('') : '<div class="empty">No contacts logged yet. Add your first one above.</div>'}
+  </div>`;
+}
+
+// ---------- RENDER: ROSTER TAB ----------
+function renderRosterTab(){
+  const q = (document.getElementById('rosterSearch')?.value || '').toLowerCase();
+  let list = [...STATE.stations];
+  if(q) list = list.filter(s=>
+    (s.hamCallsign||'').toLowerCase().includes(q) ||
+    (s.gmrsId||'').toLowerCase().includes(q) ||
+    (s.dmrId||'').toLowerCase().includes(q) ||
+    (s.name||'').toLowerCase().includes(q)
+  );
+  list.sort((a,b)=>{
+    const la = lastEventForStation(a.id), lb = lastEventForStation(b.id);
+    return (lb?lb.timestamp:0)-(la?la.timestamp:0);
+  });
+  const total = STATE.stations.length;
+  const hamCount = STATE.stations.filter(s=>s.hamCallsign).length;
+  const dmrCount = STATE.stations.filter(s=>s.dmrId).length;
+  const gmrsCount = STATE.stations.filter(s=>s.gmrsId).length;
+  const multiCount = STATE.stations.filter(s=>stationServices(s).length>1).length;
+
+  return `
+  <div class="stat-row">
+    <div class="stat"><div class="num">${total}</div><div class="lbl">Stations</div></div>
+    <div class="stat"><div class="num">${hamCount}</div><div class="lbl">Ham</div></div>
+    <div class="stat"><div class="num">${dmrCount}</div><div class="lbl">DMR</div></div>
+    <div class="stat"><div class="num">${gmrsCount}</div><div class="lbl">GMRS</div></div>
+    <div class="stat"><div class="num">${STATE.events.length}</div><div class="lbl">Contacts</div></div>
+  </div>
+  ${multiCount ? `<div class="hint" style="text-align:center;margin:-4px 0 10px">${multiCount} station${multiCount!==1?'s hold':' holds'} more than one service</div>` : ''}
+  <div class="panel">
+    <div class="panel-title">Roster</div>
+    <input class="search" id="rosterSearch" placeholder="Search callsign, GMRS ID, DMR ID, or name..." value="${escapeAttr(q)}">
+    ${list.length? list.map(s=>{
+      const last = lastEventForStation(s.id);
+      const count = eventsForStation(s.id).length;
+      return `<div class="entry">
+        <div class="entry-top">
+          <span class="entry-call">${stationLabel(s)}</span>
+          <span>${stationBadges(s)}</span>
+        </div>
+        <div class="entry-meta">
+          <span>${s.name||''}</span>
+          <span>${count} contact${count!==1?'s':''}</span>
+        </div>
+        <div class="entry-meta">Last heard: ${last?timeAgo(last.timestamp)+' · '+ (last.location||'') : '—'}</div>
+        ${s.notes?`<div class="entry-notes">${escapeHtml(s.notes)}</div>`:''}
+        <div class="entry-actions">
+          <button class="btn ghost small" data-edit-station="${s.id}">Edit</button>
+          <button class="btn ghost small" data-view-history="${s.id}">History (${count})</button>
+          <button class="btn danger small" data-del-station="${s.id}">Delete</button>
+        </div>
+        <div class="hist" id="edit-${s.id}" style="display:none;margin-top:8px"></div>
+        <div class="hist" id="hist-${s.id}" style="display:none;margin-top:8px"></div>
+      </div>`;
+    }).join('') : '<div class="empty">No stations match.</div>'}
+  </div>`;
+}
+
+// ---------- RENDER: MAP TAB (self-contained SVG radar, no external resources) ----------
+function buildRadarSVG(){
+  const home = STATE.profile;
+  const filter = STATE.mapServiceFilter || {HAM:true,DMR:true,GMRS:true};
+  if(!home.homeLat || !home.homeLng){
+    return { svg:'', unmapped:[], noHome:true };
+  }
+  const located = [];
+  const unmapped = [];
+  for(const st of STATE.stations){
+    if(!stationPassesFilter(st, filter)) continue;
+    const last = lastEventForStation(st.id);
+    if(!last) continue;
+    if(last.lat && last.lng){
+      const mi = haversineMiles(home.homeLat, home.homeLng, last.lat, last.lng);
+      const b = bearingCompass(home.homeLat, home.homeLng, last.lat, last.lng);
+      located.push({ st, last, mi, bdeg:b.deg, bdir:b.dir });
+    } else {
+      unmapped.push({ st, last });
+    }
+  }
+  if(located.length===0) return { svg:'', unmapped, noHome:false, empty:true };
+
+  let maxDist = Math.max(...located.map(l=>l.mi), 1);
+  // round max distance up to a friendly ring value
+  const niceSteps = [5,10,25,50,100,150,250,500,1000,2500];
+  let ringMax = niceSteps.find(n=>n>=maxDist) || Math.ceil(maxDist/500)*500;
+
+  const size=300, center=size/2, maxR=size/2-34;
+  let svg = `<svg viewBox="0 0 ${size} ${size}" width="100%" style="max-width:340px;display:block;margin:0 auto;">`;
+  // rings
+  [0.25,0.5,0.75,1].forEach(f=>{
+    svg += `<circle class="radar-ring" cx="${center}" cy="${center}" r="${maxR*f}"></circle>`;
+    svg += `<text class="radar-label" x="${center+3}" y="${center-maxR*f+3}">${Math.round(ringMax*f)}mi</text>`;
+  });
+  // axes
+  svg += `<line class="radar-axis" x1="${center}" y1="${center-maxR}" x2="${center}" y2="${center+maxR}"></line>`;
+  svg += `<line class="radar-axis" x1="${center-maxR}" y1="${center}" x2="${center+maxR}" y2="${center}"></line>`;
+  svg += `<text class="radar-label" x="${center-4}" y="${center-maxR-6}">N</text>`;
+  svg += `<text class="radar-label" x="${center+maxR+4}" y="${center+3}">E</text>`;
+  svg += `<text class="radar-label" x="${center-4}" y="${center+maxR+12}">S</text>`;
+  svg += `<text class="radar-label" x="${center-maxR-12}" y="${center+3}">W</text>`;
+  // home
+  svg += `<circle class="radar-home" cx="${center}" cy="${center}" r="6"></circle>`;
+
+  located.forEach((l,i)=>{
+    const r = Math.min(l.mi/ringMax, 1) * maxR;
+    const rad = (l.bdeg) * Math.PI/180;
+    const x = center + r*Math.sin(rad);
+    const y = center - r*Math.cos(rad);
+    const cls = stationPrimaryClass(l.st);
+    svg += `<circle class="radar-dot ${cls}" data-radar-station="${l.st.id}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="5"></circle>`;
+    svg += `<text class="radar-call" x="${(x+7).toFixed(1)}" y="${(y+3).toFixed(1)}">${escapeHtml(stationLabel(l.st))}</text>`;
+  });
+  svg += `</svg>`;
+  return { svg, unmapped, located, noHome:false };
+}
+
+function renderRadarBody(){
+  const { svg, unmapped, located, noHome, empty } = buildRadarSVG();
+  if(noHome){
+    return `<div class="empty">Set your home location on the Profile tab to enable the map — contacts are plotted by distance and bearing from your station.</div>`;
+  }
+  if(empty){
+    return `<div class="empty">No located contacts yet. Log a contact with a city/town to see it plotted here.</div>`;
+  }
+  return `
+    <div id="map">${svg}</div>
+    <div class="hint" style="text-align:center;margin-top:8px">Centered on your home station · green = Ham · purple = DMR · blue = GMRS · amber = you. Tap a dot for details.</div>
+    <div id="radarDetail"></div>
+    ${unmapped.length ? `<div class="contact-detail"><div class="panel-title" style="margin-bottom:6px">Unmapped Contacts</div>
+      <div class="hint">These locations couldn't be placed yet.</div>
+      ${unmapped.map(u=>`<div class="entry"><div class="entry-top"><span class="entry-call">${stationLabel(u.st)}</span><span>${stationBadges(u.st)}</span></div><div class="entry-meta">${u.last.location||'no location entered'}</div>${u.last.location?`<div class="entry-actions"><button class="btn ghost small" data-retry-geocode="${u.last.id}">Retry locating</button></div>`:''}</div>`).join('')}
+    </div>` : ''}`;
+}
+
+function renderMapTab(){
+  const pref = STATE.mapPref || 'geo';
+  const filter = STATE.mapServiceFilter || {HAM:true,DMR:true,GMRS:true};
+  return `
+  <div class="panel">
+    <div class="panel-title">Contact Map</div>
+    <div class="segbtns" id="mapPrefSeg" style="margin-bottom:12px">
+      <div class="segbtn ${pref==='geo'?'on':''}" data-val="geo">Geo Map</div>
+      <div class="segbtn ${pref==='radar'?'on':''}" data-val="radar">Radar</div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div class="hint" style="margin-bottom:6px">Show services:</div>
+      <div id="mapServiceFilter" style="display:flex;gap:8px;flex-wrap:wrap">
+        <div class="chipbtn ham ${filter.HAM?'on':''}" data-svc="HAM">Ham</div>
+        <div class="chipbtn dmr ${filter.DMR?'on':''}" data-svc="DMR">DMR</div>
+        <div class="chipbtn gmrs ${filter.GMRS?'on':''}" data-svc="GMRS">GMRS</div>
+      </div>
+    </div>
+    <div id="mapBody">
+      ${pref==='geo' ? `<div id="leafletMap" style="height:340px;border-radius:6px;border:1px solid var(--line);background:var(--panel2);"></div>
+        <div class="hint" style="text-align:center;margin-top:8px" id="geoHint">Loading map…</div>
+        <div id="geoDetail"></div>` : renderRadarBody()}
+    </div>
+  </div>`;
+}
+
+// ---------- GEO MAP (Leaflet, loaded on demand, falls back to radar if it can't load) ----------
+let _leafletLoadPromise = null;
+let _leafletMapInstance = null;
+function ensureLeafletLoaded(){
+  if(window.L) return Promise.resolve(true);
+  if(_leafletLoadPromise) return _leafletLoadPromise;
+  _leafletLoadPromise = new Promise((resolve)=>{
+    try{
+      const cssLink = document.createElement('link');
+      cssLink.rel = 'stylesheet';
+      cssLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css';
+      document.head.appendChild(cssLink);
+
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js';
+      const timeout = setTimeout(()=>resolve(false), 6000);
+      script.onload = ()=>{ clearTimeout(timeout); resolve(true); };
+      script.onerror = ()=>{ clearTimeout(timeout); resolve(false); };
+      document.head.appendChild(script);
+    }catch(e){ resolve(false); }
+  });
+  return _leafletLoadPromise;
+}
+
+function collectLocatedContacts(){
+  const home = STATE.profile;
+  const filter = STATE.mapServiceFilter || {HAM:true,DMR:true,GMRS:true};
+  const located = [], unmapped = [];
+  for(const st of STATE.stations){
+    if(!stationPassesFilter(st, filter)) continue;
+    const last = lastEventForStation(st.id);
+    if(!last) continue;
+    if(last.lat && last.lng){
+      let mi=null, bdeg=null, bdir=null;
+      if(home.homeLat && home.homeLng){
+        mi = haversineMiles(home.homeLat, home.homeLng, last.lat, last.lng);
+        const b = bearingCompass(home.homeLat, home.homeLng, last.lat, last.lng);
+        bdeg=b.deg; bdir=b.dir;
+      }
+      located.push({ st, last, mi, bdeg, bdir });
+    } else {
+      unmapped.push({ st, last });
+    }
+  }
+  return { located, unmapped };
+}
+
+async function mountGeoMap(){
+  const hintEl = document.getElementById('geoHint');
+  const ok = await ensureLeafletLoaded();
+  if(!ok){
+    showToast('Map tiles unavailable — showing radar instead');
+    STATE.mapPref = 'radar';
+    render();
+    return;
+  }
+  const el = document.getElementById('leafletMap');
+  if(!el) return; // user may have switched tabs while loading
+  if(_leafletMapInstance){ try{ _leafletMapInstance.remove(); }catch(e){} _leafletMapInstance=null; }
+
+  const home = STATE.profile;
+  const { located, unmapped } = collectLocatedContacts();
+  const points = [];
+  if(home.homeLat && home.homeLng) points.push([home.homeLat, home.homeLng]);
+  located.forEach(l=>points.push([l.last.lat, l.last.lng]));
+
+  if(points.length===0){
+    if(hintEl) hintEl.textContent = 'No located contacts yet. Log a contact with a city/town, or set your home location on the Profile tab.';
+    el.style.display='none';
+    return;
+  }
+
+  const L = window.L;
+  const map = L.map('leafletMap');
+  _leafletMapInstance = map;
+  // CARTO's dark basemap: matches the app's theme and, unlike raw tile.openstreetmap.org,
+  // its usage terms allow embedding in distributed apps (OSM's own tile server explicitly
+  // disallows that and will return 403s from packaged/wrapped apps).
+  const tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+    attribution:'&copy; OpenStreetMap contributors &copy; CARTO', maxZoom:18, subdomains:'abcd'
+  }).addTo(map);
+
+  // If tiles still fail to load (blocked network, offline, provider hiccup),
+  // fall back to the offline radar view automatically rather than showing broken tiles.
+  let tileErrorCount = 0;
+  tileLayer.on('tileerror', ()=>{
+    tileErrorCount++;
+    if(tileErrorCount>=6){
+      showToast('Map tiles unavailable — showing radar instead');
+      STATE.mapPref = 'radar';
+      storeSet('mapPref', 'radar');
+      render();
+    }
+  });
+
+  const amberIcon = L.divIcon({className:'',html:'<div style="width:14px;height:14px;border-radius:50%;background:#ffb020;border:2px solid #14170f;"></div>'});
+  const greenIcon = L.divIcon({className:'',html:'<div style="width:12px;height:12px;border-radius:50%;background:#6fdc8c;border:2px solid #14170f;"></div>'});
+  const blueIcon  = L.divIcon({className:'',html:'<div style="width:12px;height:12px;border-radius:50%;background:#8fb4ff;border:2px solid #14170f;"></div>'});
+  const purpleIcon = L.divIcon({className:'',html:'<div style="width:12px;height:12px;border-radius:50%;background:#c9a0ff;border:2px solid #14170f;"></div>'});
+
+  if(home.homeLat && home.homeLng){
+    L.marker([home.homeLat, home.homeLng], {icon:amberIcon}).addTo(map)
+      .bindPopup(`<b>${escapeHtml(home.callsign||'HOME')}</b><br>Your station`);
+  }
+  located.forEach(l=>{
+    const cls = stationPrimaryClass(l.st);
+    const icon = cls==='gmrs' ? blueIcon : cls==='dmr' ? purpleIcon : greenIcon;
+    let distStr='';
+    if(l.mi!=null) distStr = `<br>${l.mi.toFixed(0)} mi ${l.bdir} (${l.bdeg}&deg;)`;
+    L.marker([l.last.lat, l.last.lng], {icon}).addTo(map)
+      .bindPopup(`<b>${escapeHtml(stationLabel(l.st))}</b>${l.st.name?(' — '+escapeHtml(l.st.name)):''}<br>${escapeHtml(l.last.location||'')}${distStr}<br>Last heard ${timeAgo(l.last.timestamp)}`);
+  });
+
+  if(points.length>1){ map.fitBounds(points, {padding:[30,30]}); }
+  else { map.setView(points[0], 10); }
+
+  if(hintEl) hintEl.textContent = 'Green = Ham · purple = DMR · blue = GMRS · amber = you. The view auto-fits as farther contacts get logged.';
+
+  const detailEl = document.getElementById('geoDetail');
+  if(unmapped.length && detailEl){
+    detailEl.innerHTML = `<div class="contact-detail"><div class="panel-title" style="margin-bottom:6px">Unmapped Contacts</div>
+      <div class="hint">These locations couldn't be placed yet.</div>
+      ${unmapped.map(u=>`<div class="entry"><div class="entry-top"><span class="entry-call">${stationLabel(u.st)}</span><span>${stationBadges(u.st)}</span></div><div class="entry-meta">${u.last.location||'no location entered'}</div>${u.last.location?`<div class="entry-actions"><button class="btn ghost small" data-retry-geocode="${u.last.id}">Retry locating</button></div>`:''}</div>`).join('')}
+    </div>`;
+    wireRetryButtons();
+  }
+}
+
+async function retryGeocodeForEvent(eventId){
+  const ev = STATE.events.find(e=>e.id===eventId);
+  if(!ev || !ev.location) return;
+  showToast('Looking up '+ev.location+'…');
+  const g = await geocode(ev.location);
+  if(g){
+    ev.lat = g.lat; ev.lng = g.lng;
+    await storeSet('events', STATE.events);
+    showToast('Located: '+ev.location);
+    render();
+  } else {
+    showToast('Still couldn\'t place that location');
+  }
+}
+function wireRetryButtons(){
+  document.querySelectorAll('[data-retry-geocode]').forEach(b=>{
+    b.onclick = ()=> retryGeocodeForEvent(b.dataset.retryGeocode);
+  });
+}
+
+function showRadarDetail(stationId, located){
+  const l = located.find(x=>x.st.id===stationId);
+  const box = document.getElementById('radarDetail');
+  if(!l || !box) return;
+  box.innerHTML = `<div class="contact-detail">
+    <div class="entry-call">${stationLabel(l.st)}</div>
+    <div class="entry-meta"><span>${l.st.name||''}</span><span>${l.last.location||''}</span></div>
+    <div class="entry-meta">${l.mi.toFixed(0)} mi ${l.bdir} (${l.bdeg}&deg;) · last heard ${timeAgo(l.last.timestamp)}</div>
+  </div>`;
+}
+
+// ---------- RENDER: PROFILE TAB ----------
+function renderProfileTab(){
+  const p = STATE.profile;
+  return `
+  <div class="panel">
+    <div class="panel-title">Your Station</div>
+    <form id="profileForm">
+      <div class="field"><label>Your Callsign (Ham)</label><input name="callsign" value="${escapeAttr(p.callsign)}" placeholder="KD5XYZ"></div>
+      <div class="field"><label>Ham License Class / ID</label><input name="hamLicense" value="${escapeAttr(p.hamLicense)}" placeholder="General, FRN 001234567"></div>
+      <div class="field"><label>GMRS License ID</label><input name="gmrsId" value="${escapeAttr(p.gmrsId)}" placeholder="WRXX123"></div>
+      <div class="field"><label>Home Location (city/town)</label><input name="homeLocation" value="${escapeAttr(p.homeLocation)}" placeholder="Springfield, IL"></div>
+      ${p.gridSquare?`<div class="hint">Grid square: <span class="grid-chip">${p.gridSquare}</span> (auto-computed from your location)</div>`:''}
+      <button type="submit" class="btn" style="margin-top:10px">Save Profile</button>
+    </form>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Data</div>
+    <div class="hint">
+      Auto-save status:
+      ${STATE.storageBackend==='claude' ? '<span style="color:var(--green)">connected via Claude — persists across sessions automatically</span>'
+        : STATE.storageBackend==='local' ? '<span style="color:var(--green)">saved locally on this device</span> — persists here as long as you keep using this install of the app, but won\'t follow you to another device or a reinstall'
+        : STATE.storageBackend==='none' ? '<span style="color:var(--red)">not connected — nothing is persisting right now</span>'
+        : 'checking…'}
+    </div>
+    <div class="hint" style="margin-top:8px">Export regularly as a backup — especially useful before switching phones/browsers, or any time you want extra peace of mind. Import brings a backup back in.</div>
+    <button class="btn ghost" style="margin-top:10px" id="exportBtn">Export log as JSON</button>
+    <button class="btn ghost" style="margin-top:8px" id="importBtn">Import log from JSON</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none">
+    <div class="hint" style="margin-top:10px">If the Export button doesn't visibly do anything (common in packaged/wrapped apps), use this instead — guaranteed to work:</div>
+    <button class="btn ghost" style="margin-top:8px" id="showTextBtn">Show backup as text</button>
+    <div id="exportTextBox" style="display:none;margin-top:10px">
+      <textarea id="exportTextArea" readonly style="min-height:140px;font-size:11px" onclick="this.select()"></textarea>
+      <button class="btn" style="margin-top:8px" id="copyTextBtn">Copy to clipboard</button>
+      <div class="hint" style="margin-top:6px">Or tap inside the box, select all, and copy manually — paste it somewhere safe (Notes app, email to yourself, etc.) as your backup.</div>
+    </div>
+    <div class="hint" style="margin-top:14px;text-align:center;opacity:0.6">Build ${APP_BUILD}</div>
+  </div>`;
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+// ---------- MAIN RENDER ----------
+function render(){
+  const app = document.getElementById('app');
+  try{
+    if(STATE.activeTab==='log') app.innerHTML = renderLogTab();
+    else if(STATE.activeTab==='roster') app.innerHTML = renderRosterTab();
+    else if(STATE.activeTab==='map') app.innerHTML = renderMapTab();
+    else if(STATE.activeTab==='profile') app.innerHTML = renderProfileTab();
+    attachHandlers();
+    if(STATE.activeTab==='map' && (STATE.mapPref||'geo')==='geo') setTimeout(mountGeoMap, 20);
+  }catch(e){
+    console.error('render failed', e);
+    app.innerHTML = '<div class="panel"><div class="panel-title">Display error</div><div class="hint">'+escapeHtml(String(e && e.message || e))+'</div></div>';
+  }
+}
+
+function attachHandlers(){
+  // tab switching
+  document.querySelectorAll('.tab').forEach(t=>{
+    t.classList.toggle('active', t.dataset.tab===STATE.activeTab);
+    t.onclick = ()=>{ STATE.activeTab=t.dataset.tab; render(); };
+  });
+
+  if(STATE.activeTab==='log'){
+    let service='HAM';
+    const fieldLabels = {
+      HAM:  { freq:'Frequency / Repeater', tone:'Tone / Offset', showMode:true },
+      GMRS: { freq:'GMRS Channel / Repeater', tone:'Tone / Offset', showMode:false },
+      DMR:  { freq:'Talkgroup / Repeater', tone:'Time Slot / Color Code', showMode:false }
+    };
+    const seg = document.getElementById('serviceSeg');
+    seg.querySelectorAll('.segbtn').forEach(b=>{
+      b.onclick = ()=>{
+        service=b.dataset.val;
+        seg.querySelectorAll('.segbtn').forEach(x=>x.classList.remove('on'));
+        b.classList.add('on');
+        const cfg = fieldLabels[service];
+        document.getElementById('modeField').style.display = cfg.showMode?'block':'none';
+        document.getElementById('freqLabel').textContent = cfg.freq;
+        document.getElementById('toneLabel').textContent = cfg.tone;
+      };
+    });
+    document.getElementById('modeField').style.display='block';
+
+    document.getElementById('f-sig').addEventListener('change', (e)=>{
+      document.getElementById('sigPreview').innerHTML = renderSMeter(e.target.value);
+    });
+
+    const advToggle = document.getElementById('advToggle');
+    advToggle.onclick = ()=>{
+      STATE.advOpen = !STATE.advOpen;
+      document.getElementById('advBox').classList.toggle('open', STATE.advOpen);
+    };
+
+    document.getElementById('logForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const dtVal = document.getElementById('f-dt').value;
+      const form = {
+        hamCallsign: fd.get('hamCallsign'), gmrsId: fd.get('gmrsId'), dmrId: fd.get('dmrId'), name: fd.get('name'), service,
+        freq: fd.get('freq'), mode: service==='HAM'?fd.get('mode'):(service==='DMR'?'DMR':'FM'), tone: fd.get('tone'),
+        location: fd.get('location'), sig: fd.get('sig'),
+        lat: fd.get('lat'), lng: fd.get('lng'),
+        timestamp: dtVal ? new Date(dtVal).getTime() : Date.now(),
+        notes: fd.get('notes')
+      };
+      const ok = await saveContactEvent(form);
+      if(ok){ STATE.advOpen=false; render(); }
+    });
+
+    document.querySelectorAll('[data-del-event]').forEach(b=>{
+      b.onclick = ()=> deleteEvent(b.dataset.delEvent);
+    });
+  }
+
+  if(STATE.activeTab==='roster'){
+    const search = document.getElementById('rosterSearch');
+    search.oninput = ()=>{
+      const cursorPos = search.selectionStart;
+      render();
+      const s2 = document.getElementById('rosterSearch');
+      s2.focus(); s2.setSelectionRange(cursorPos,cursorPos);
+    };
+    document.querySelectorAll('[data-view-history]').forEach(b=>{
+      b.onclick = ()=>{
+        const id = b.dataset.viewHistory;
+        const box = document.getElementById('hist-'+id);
+        if(box.style.display==='none'){
+          const evs = eventsForStation(id);
+          box.innerHTML = evs.map(ev=>`
+            <div style="border-top:1px solid var(--line);padding:8px 0;font-size:11.5px;">
+              <div>${fmtDT(ev.timestamp)} · ${ev.freq||''} ${ev.mode?('· '+ev.mode):''} ${ev.tone?('· '+ev.tone):''}</div>
+              <div style="margin:4px 0">${renderSMeter(ev.sig)}</div>
+              <div style="color:var(--muted)">${ev.location||''}</div>
+              ${ev.notes?`<div class="entry-notes">${escapeHtml(ev.notes)}</div>`:''}
+            </div>`).join('') || '<div class="empty">No history.</div>';
+          box.style.display='block';
+        } else { box.style.display='none'; }
+      };
+    });
+    document.querySelectorAll('[data-del-station]').forEach(b=>{
+      b.onclick = ()=>{ if(confirm('Delete this station and all its logged contacts?')) deleteStation(b.dataset.delStation); };
+    });
+    document.querySelectorAll('[data-edit-station]').forEach(b=>{
+      b.onclick = ()=>{
+        const id = b.dataset.editStation;
+        const box = document.getElementById('edit-'+id);
+        const st = STATE.stations.find(s=>s.id===id);
+        if(!st || !box) return;
+        if(box.style.display==='none'){
+          box.innerHTML = renderEditForm(st);
+          box.style.display='block';
+          const saveBtn = box.querySelector('[data-save-edit]');
+          const cancelBtn = box.querySelector('[data-cancel-edit]');
+          saveBtn.onclick = async ()=>{
+            const updates = {
+              hamCallsign: document.getElementById('edit-hamcall-'+id).value,
+              gmrsId: document.getElementById('edit-gmrsid-'+id).value,
+              dmrId: document.getElementById('edit-dmrid-'+id).value,
+              name: document.getElementById('edit-name-'+id).value,
+              notes: document.getElementById('edit-notes-'+id).value
+            };
+            if(!updates.hamCallsign && !updates.gmrsId && !updates.dmrId){ showToast('Needs a Ham callsign, GMRS ID, or DMR ID'); return; }
+            await updateStation(id, updates);
+            showToast('Contact updated');
+            render();
+          };
+          cancelBtn.onclick = ()=>{ box.style.display='none'; box.innerHTML=''; };
+        } else {
+          box.style.display='none'; box.innerHTML='';
+        }
+      };
+    });
+  }
+
+  if(STATE.activeTab==='map'){
+    const seg = document.getElementById('mapPrefSeg');
+    if(seg){
+      seg.querySelectorAll('.segbtn').forEach(b=>{
+        b.onclick = async ()=>{
+          STATE.mapPref = b.dataset.val;
+          await storeSet('mapPref', STATE.mapPref);
+          render();
+        };
+      });
+    }
+    const filterRow = document.getElementById('mapServiceFilter');
+    if(filterRow){
+      filterRow.querySelectorAll('.chipbtn').forEach(chip=>{
+        chip.onclick = async ()=>{
+          const svc = chip.dataset.svc;
+          const enabledCount = Object.values(STATE.mapServiceFilter).filter(Boolean).length;
+          // don't allow turning off the last remaining service — nothing would show
+          if(STATE.mapServiceFilter[svc] && enabledCount<=1){
+            showToast('At least one service needs to stay on');
+            return;
+          }
+          STATE.mapServiceFilter[svc] = !STATE.mapServiceFilter[svc];
+          await storeSet('mapServiceFilter', STATE.mapServiceFilter);
+          render();
+        };
+      });
+    }
+    if((STATE.mapPref||'geo')==='radar'){
+      const { located } = buildRadarSVG();
+      document.querySelectorAll('[data-radar-station]').forEach(dot=>{
+        dot.onclick = ()=> showRadarDetail(dot.dataset.radarStation, located||[]);
+      });
+      wireRetryButtons();
+    }
+  }
+
+  if(STATE.activeTab==='profile'){
+    document.getElementById('profileForm').addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      STATE.profile.callsign = fd.get('callsign')||'';
+      STATE.profile.hamLicense = fd.get('hamLicense')||'';
+      STATE.profile.gmrsId = fd.get('gmrsId')||'';
+      const newLoc = fd.get('homeLocation')||'';
+      STATE.profile.homeLocation = newLoc;
+      if(newLoc){
+        const g = await geocode(newLoc);
+        if(g){
+          STATE.profile.homeLat=g.lat; STATE.profile.homeLng=g.lng;
+          STATE.profile.gridSquare = toGridSquare(g.lat,g.lng);
+        }
+      } else {
+        STATE.profile.homeLat=null; STATE.profile.homeLng=null; STATE.profile.gridSquare='';
+      }
+      await storeSet('profile', STATE.profile);
+      showToast('Profile saved');
+      render();
+    });
+    const exportBtn = document.getElementById('exportBtn');
+    if(exportBtn) exportBtn.onclick = async ()=>{
+      const data = JSON.stringify({profile:STATE.profile, stations:STATE.stations, events:STATE.events}, null, 2);
+      const filename = 'qso-log-export-'+new Date().toISOString().slice(0,10)+'.json';
+
+      // Try the native share sheet first — this tends to work in packaged/wrapped
+      // apps where a plain download link goes nowhere, since it hands off to the OS.
+      try{
+        if(navigator.canShare){
+          const file = new File([data], filename, {type:'application/json'});
+          if(navigator.canShare({files:[file]})){
+            await navigator.share({files:[file], title:'QSO Mate Export'});
+            showToast('Shared');
+            return;
+          }
+        }
+      }catch(e){
+        if(e && e.name==='AbortError') return; // user cancelled the share sheet, not an error
+      }
+
+      // Fall back to a classic blob download link (works in regular browsers).
+      try{
+        const blob = new Blob([data],{type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href=url; a.download=filename;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast('Download started — check Downloads/Files if nothing appeared. If truly nothing happened, use "Show backup as text" below instead.');
+      }catch(e){
+        showToast('That didn\'t work here — use "Show backup as text" below instead');
+      }
+    };
+    const showTextBtn = document.getElementById('showTextBtn');
+    if(showTextBtn) showTextBtn.onclick = ()=>{
+      const box = document.getElementById('exportTextBox');
+      const ta = document.getElementById('exportTextArea');
+      if(box.style.display==='none'){
+        ta.value = JSON.stringify({profile:STATE.profile, stations:STATE.stations, events:STATE.events}, null, 2);
+        box.style.display='block';
+      } else {
+        box.style.display='none';
+      }
+    };
+    const copyTextBtn = document.getElementById('copyTextBtn');
+    if(copyTextBtn) copyTextBtn.onclick = async ()=>{
+      const ta = document.getElementById('exportTextArea');
+      ta.select(); ta.setSelectionRange(0, 999999);
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          await navigator.clipboard.writeText(ta.value);
+          showToast('Copied to clipboard');
+          return;
+        }
+      }catch(e){}
+      try{
+        document.execCommand('copy');
+        showToast('Copied to clipboard');
+      }catch(e){
+        showToast('Auto-copy blocked here — select the text and copy manually');
+      }
+    };
+    const importBtn = document.getElementById('importBtn');
+    const importFile = document.getElementById('importFile');
+    if(importBtn && importFile){
+      importBtn.onclick = ()=> importFile.click();
+      importFile.onchange = async (e)=>{
+        const file = e.target.files[0];
+        if(!file) return;
+        try{
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if(!data.stations || !data.events){ showToast('That file doesn\'t look like a QSO Mate export'); return; }
+          if(!confirm(`Import ${data.stations.length} station(s) and ${data.events.length} contact(s)? This replaces what's currently loaded.`)) return;
+          STATE.stations = data.stations;
+          STATE.events = data.events;
+          if(data.profile) STATE.profile = {...STATE.profile, ...data.profile};
+          await storeSet('stations', STATE.stations);
+          await storeSet('events', STATE.events);
+          await storeSet('profile', STATE.profile);
+          showToast('Log imported');
+          render();
+        }catch(err){
+          showToast('Could not read that file');
+          console.error('import failed', err);
+        }
+        importFile.value='';
+      };
+    }
+  }
+}
+
+// ---------- INIT ----------
+async function init(){
+  try{
+    const [profile, stations, events, geocache, mapPref, mapServiceFilter] = await Promise.all([
+      storeGet('profile'), storeGet('stations'), storeGet('events'), storeGet('geocache'), storeGet('mapPref'), storeGet('mapServiceFilter')
+    ]);
+    if(profile) STATE.profile = {...STATE.profile, ...profile};
+    if(stations) STATE.stations = stations;
+    if(events) STATE.events = events;
+    if(geocache) STATE.geocache = geocache;
+    if(mapPref) STATE.mapPref = mapPref;
+    if(mapServiceFilter) STATE.mapServiceFilter = {...STATE.mapServiceFilter, ...mapServiceFilter};
+    const health = await checkStorageHealth();
+    STATE.storageOK = health.ok;
+    STATE.storageBackend = health.backend;
+    render();
+  }catch(e){
+    console.error('init failed', e);
+    document.getElementById('app').innerHTML =
+      '<div class="panel"><div class="panel-title">Startup error</div>'+
+      '<div class="hint">The app hit a problem loading your saved data: '+escapeHtml(String(e && e.message || e))+
+      '<br><br>Try reloading. Your data (if any was saved) is not affected.</div></div>';
+  }
+}
+window.addEventListener('error', (e)=>{
+  console.error('Uncaught error:', e.error || e.message);
+});
+init();
+</script>
+</body>
+</html>
